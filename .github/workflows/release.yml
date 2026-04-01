@@ -6,6 +6,10 @@ on:
       - 'v*' # Sadece v ile başlayan tagler atıldığında çalışır (v1.0.0 vb.)
   workflow_dispatch: # Manuel olarak GitHub sitesinden başlatabilmek için
 
+# Bu kısım uygulamanızın release (sürüm) oluşturabilmesi için GitHub'a 'Yazma/Değiştirme' izni verir.
+permissions:
+  contents: write
+
 jobs:
   release:
     strategy:
@@ -22,7 +26,7 @@ jobs:
       - name: Kurulum - Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Kurulum - Bagimliliklar (NPM)
         run: npm install
