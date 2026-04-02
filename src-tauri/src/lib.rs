@@ -59,92 +59,26 @@ async fn cancel_transfer(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_wifi_ssid() -> Result<String, String> {
+async fn get_wifi_ssid() -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
-        // 1. Wi-Fi donanım arayüzünü (en0, en1 vb) dinamik bulalım
-        let mut wifi_if = "en0".to_string();
-        if let Ok(output) = std::process::Command::new("networksetup").args(["-listallhardwareports"]).output() {
-            let ports = String::from_utf8_lossy(&output.stdout).to_string();
-            let lines: Vec<&str> = ports.lines().collect();
-            for (i, line) in lines.iter().enumerate() {
-                if line.contains("Hardware Port: Wi-Fi") && i + 1 < lines.len() {
-                    let next_line = lines[i + 1];
-                    if next_line.contains("Device: ") {
-                        wifi_if = next_line.replace("Device: ", "").trim().to_string();
-                    }
-                }
-            }
-        }
-
-        // 2. networksetup -getairportnetwork ile SSID alalım
-        if let Ok(output) = std::process::Command::new("networksetup").args(["-getairportnetwork", &wifi_if]).output() {
-            let text = String::from_utf8_lossy(&output.stdout).to_string();
-            if !text.contains("You are not associated") {
-                if let Some(ssid) = text.split(": ").nth(1) {
-                    let s = ssid.trim();
-                    if !s.is_empty() && s != "<redacted>" { return Ok(s.to_string()); }
-                }
-            }
-        }
-        
-        // 3. ipconfig getsummary <wifi_if> 
-        if let Ok(output) = std::process::Command::new("ipconfig").args(["getsummary", &wifi_if]).output() {
-            let text = String::from_utf8_lossy(&output.stdout).to_string();
-            for line in text.lines() {
-                if line.contains(" SSID : ") {
-                    if let Some(ssid) = line.split(" SSID : ").nth(1) {
-                        let s = ssid.trim();
-                        if !s.is_empty() && s != "<redacted>" { return Ok(s.to_string()); }
-                    }
-                }
-            }
-        }
-
-        // 4. system_profiler SPAirPortDataType — bazı macOS sürümlerinde SSID'yi burada gösterir
-        if let Ok(output) = std::process::Command::new("system_profiler").args(["SPAirPortDataType"]).output() {
-            let text = String::from_utf8_lossy(&output.stdout).to_string();
-            let mut found_current = false;
-            for line in text.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("Current Network Information:") {
-                    found_current = true;
-                    continue;
-                }
-                if found_current && trimmed.ends_with(':') && !trimmed.contains("Current") {
-                    let ssid = trimmed.trim_end_matches(':').trim();
-                    if !ssid.is_empty() && ssid != "<redacted>" {
-                        return Ok(ssid.to_string());
-                    }
-                }
-                if found_current && trimmed.is_empty() {
-                    break;
-                }
-            }
-        }
-
-        // 5. wdutil info — macOS 14.4+ için
-        if let Ok(output) = std::process::Command::new("wdutil").args(["info"]).output() {
-            let text = String::from_utf8_lossy(&output.stdout).to_string();
-            for line in text.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("SSID") && trimmed.contains(':') {
-                    if let Some(ssid) = trimmed.split(':').nth(1) {
-                        let s = ssid.trim();
-                        if !s.is_empty() && s != "<redacted>" { return Ok(s.to_string()); }
-                    }
-                }
-            }
-        }
-
-        Err("WiFi ağı bulunamadı (Apple Gizlilik)".to_string())
+        // YENİ: macOS Sonoma (14) ve sonrasında Apple, "Konum Servisleri" izni yetkisi 
+        // olmayan uygulamalara terminal üzerinden de Wi-Fi adını okutmayı engelledi.
+        // system_profiler gibi komutlar 10 saniye boyunca sistemi dondurup yine de 
+        // veri alamadığı için Mac tarafında bu sorguları pas geçip default değeri veriyoruz.
+        Err("Apple Gizlilik Koruması".to_string())
     }
     #[cfg(target_os = "windows")]
     {
-        let output = std::process::Command::new("netsh")
-            .args(["wlan", "show", "interfaces"])
-            .output()
-            .map_err(|e| e.to_string())?;
+        // Windows'ta işlem arka planda asenkron çalışacak, böylece donma olmayacak.
+        let output = tokio::task::spawn_blocking(|| {
+            std::process::Command::new("netsh")
+                .args(["wlan", "show", "interfaces"])
+                .output()
+        }).await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
         let text = String::from_utf8_lossy(&output.stdout).to_string();
         for line in text.lines() {
             let trimmed = line.trim();

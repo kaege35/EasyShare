@@ -85,6 +85,7 @@ pub async fn start_transfer_server(app: AppHandle) -> Result<(), Box<dyn std::er
 }
 
 async fn handle_connection(mut socket: TcpStream, app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let _ = socket.set_nodelay(true);
     let save_dir = dirs::download_dir().unwrap_or_else(|| std::env::current_dir().unwrap());
     let mut active_cancel: Option<Arc<tokio::sync::Notify>> = None;
 
@@ -161,7 +162,7 @@ async fn handle_connection(mut socket: TcpStream, app: AppHandle) -> Result<(), 
                 }));
 
                 let mut file = tokio::fs::File::create(&save_path).await?;
-                let mut buffer = vec![0u8; 1024 * 1024];
+                let mut buffer = vec![0u8; 4 * 1024 * 1024]; // 4MB Chunk (Maksimum güvenli hız)
                 let mut remaining = file_size;
                 let mut downloaded = 0u64;
                 let mut last_pct = 0;
@@ -237,6 +238,7 @@ async fn handle_connection(mut socket: TcpStream, app: AppHandle) -> Result<(), 
 pub async fn send_items(peer_ip: &str, paths: Vec<PathBuf>, app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     println!("{} adresine bağlanılıyor...", peer_ip);
     let mut socket = TcpStream::connect(format!("{}:{}", peer_ip, TRANSFER_PORT)).await?;
+    let _ = socket.set_nodelay(true);
     println!("Bağlantı başarılı. Dosya listesi hazırlanıyor...");
 
     let mut all_files = Vec::new();
@@ -325,7 +327,7 @@ pub async fn send_items(peer_ip: &str, paths: Vec<PathBuf>, app: AppHandle) -> R
         socket.write_all(&req_json).await?;
         
         let mut file = tokio::fs::File::open(&abs_path).await?;
-        let mut buffer = vec![0u8; 1024 * 1024];
+        let mut buffer = vec![0u8; 4 * 1024 * 1024]; // 4MB Chunk
         let mut uploaded = 0u64;
         let mut last_pct = 0;
 
