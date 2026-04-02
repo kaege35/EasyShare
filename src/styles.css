@@ -7,38 +7,30 @@
 }
 
 :root {
-  --bg: #F4F5F7;
+  --bg: #F2F2F7;
   --surface: #FFFFFF;
   --surface2: #F9FAFB;
-  --border: #E5E7EB;
-  --accent: #E53935;
-  --accent2: #D32F2F;
-  --text: #111827;
-  --muted: #6B7280;
-  --success: #10B981;
-  --danger: #EF4444;
-  --warn: #F59E0B;
+  --border: #D1D1D6;
+  --accent: #D72323;
+  --accent2: #C62828;
+  --text: #000000;
+  --muted: #8E8E93;
+  --success: #34C759;
+  --danger: #FF3B30;
+  --warn: #FF9500;
 }
 
 html,
 body {
   height: 100%;
-  background: var(--bg);
+  background: #F5F5F7;
   color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* NOISE TEXTURE MODERATED */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
-  mix-blend-mode: multiply;
-}
+
 
 /* RED CORPORATE AMBIENT */
 body::after {
@@ -62,7 +54,7 @@ body::after {
   align-items: center;
   justify-content: center;
   z-index: 100;
-  background: var(--bg);
+  background: #F5F5F7;
 }
 
 .login-card {
@@ -70,7 +62,7 @@ body::after {
   padding: 48px;
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
   border-radius: 6px;
   position: relative;
   overflow: hidden;
@@ -86,11 +78,11 @@ body::after {
   background: linear-gradient(90deg, transparent, var(--accent), transparent);
 }
 
-.login-logo {
+.login-logo { font-weight: 700;
   font-family: 'Syne', sans-serif;
   font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -1px;
+  font-weight: 400;
+  
   margin-bottom: 6px;
 }
 
@@ -101,14 +93,14 @@ body::after {
 .login-sub {
   font-size: 11px;
   color: var(--muted);
-  letter-spacing: 2px;
+  
   text-transform: uppercase;
   margin-bottom: 40px;
 }
 
 .login-label {
   font-size: 10px;
-  letter-spacing: 2px;
+  
   text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 10px;
@@ -118,12 +110,12 @@ body::after {
 .login-input {
   width: 100%;
   padding: 14px 16px;
-  background: var(--bg);
+  background: #F5F5F7;
   border: 1px solid var(--border);
   color: var(--text);
   font-family: 'Inter', sans-serif;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   outline: none;
   transition: border-color 0.2s;
   margin-bottom: 24px;
@@ -141,8 +133,8 @@ body::after {
   border: none;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 2px;
+  font-weight: 400;
+  
   text-transform: uppercase;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.1s;
@@ -174,11 +166,11 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 32px;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(14, 18, 25, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-app-region: drag; /* Mac titlebar drag */
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-app-region: drag;
 }
 
 /* Sadece butonlarda drag engellenmeli */
@@ -188,9 +180,9 @@ body::after {
 
 .header-logo {
   font-family: 'Syne', sans-serif;
-  font-weight: 800;
+  font-weight: 400;
   font-size: 20px;
-  letter-spacing: -0.5px;
+  
 }
 
 .header-logo span {
@@ -209,7 +201,7 @@ body::after {
   gap: 8px;
   font-size: 11px;
   color: var(--muted);
-  letter-spacing: 1px;
+  
 }
 
 .dot {
@@ -235,7 +227,7 @@ body::after {
 .my-name {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--accent);
 }
 
@@ -258,7 +250,7 @@ body::after {
 .sidebar-header {
   padding: 20px 24px 14px;
   font-size: 10px;
-  letter-spacing: 2px;
+  
   text-transform: uppercase;
   color: var(--muted);
   border-bottom: 1px solid var(--border);
@@ -271,7 +263,7 @@ body::after {
   background: var(--accent);
   color: var(--bg);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   padding: 2px 8px;
   border-radius: 20px;
 }
@@ -308,12 +300,12 @@ body::after {
 }
 
 .user-item:hover {
-  background: var(--surface2);
+  background: rgba(0,0,0,0.03);
   border-color: var(--border);
 }
 
 .user-item.selected {
-  background: var(--surface2);
+  background: rgba(0,0,0,0.03);
   border-color: var(--accent);
 }
 
@@ -331,13 +323,13 @@ body::after {
   width: 38px;
   height: 38px;
   border-radius: 0;
-  background: var(--surface2);
+  background: rgba(0,0,0,0.03);
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Inter', sans-serif;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 12px;
   color: var(--accent);
   flex-shrink: 0;
@@ -348,10 +340,10 @@ body::after {
   min-width: 0;
 }
 
-.user-name {
+.user-name { font-weight: 500;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -360,13 +352,13 @@ body::after {
 .user-status {
   font-size: 10px;
   color: var(--success);
-  letter-spacing: 1px;
+  
   margin-top: 2px;
 }
 
 .send-badge {
   font-size: 9px;
-  letter-spacing: 1px;
+  
   text-transform: uppercase;
   color: var(--accent);
   opacity: 0;
@@ -419,7 +411,7 @@ body::after {
 
 .no-target-msg p {
   font-size: 12px;
-  letter-spacing: 1px;
+  
   line-height: 1.8;
 }
 
@@ -484,10 +476,10 @@ body::after {
   opacity: 0.5;
 }
 
-.drop-target-name {
+.drop-target-name { font-weight: 700;
   font-family: 'Inter', sans-serif;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--accent);
   margin-bottom: 8px;
 }
@@ -495,14 +487,14 @@ body::after {
 .drop-hint {
   font-size: 11px;
   color: var(--muted);
-  letter-spacing: 1px;
+  
 }
 
 .drop-or {
   margin: 16px 0;
   font-size: 10px;
   color: var(--muted);
-  letter-spacing: 2px;
+  
 }
 
 .browse-btn {
@@ -514,7 +506,7 @@ body::after {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: 1px;
+  
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2);
@@ -544,7 +536,7 @@ body::after {
 
 .log-header {
   font-size: 10px;
-  letter-spacing: 2px;
+  
   text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 10px;
@@ -610,7 +602,7 @@ body::after {
 
 .log-status {
   font-size: 10px;
-  letter-spacing: 1px;
+  
   color: var(--muted);
   min-width: 60px;
   text-align: right;
@@ -681,7 +673,7 @@ body::after {
 .modal-title {
   font-family: 'Inter', sans-serif;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 400;
   margin-bottom: 8px;
 }
 
@@ -710,8 +702,8 @@ body::after {
   border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
+  font-weight: 400;
+  
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.15s;
@@ -750,7 +742,7 @@ body::after {
 
 .toast {
   padding: 14px 20px;
-  background: var(--surface2);
+  background: rgba(0,0,0,0.03);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   font-size: 12px;
@@ -810,11 +802,20 @@ body::after {
   color: #fff;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 #update-banner button:hover {
   background: rgba(255,255,255,0.35);
+}
+
+.login-version {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
 }

@@ -43,7 +43,7 @@ async fn open_file_dialog(app: AppHandle, peer_ip: String) -> Result<(), String>
     use tauri_plugin_dialog::DialogExt;
     app.dialog().file().pick_files(move |file_paths| {
         if let Some(paths) = file_paths {
-            let pbs: Vec<std::path::PathBuf> = paths.into_iter().map(|p| p.into_path().unwrap()).collect();
+            let pbs: Vec<std::path::PathBuf> = paths.into_iter().filter_map(|p| p.into_path().ok()).collect();
             let app_c = app.clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = transfer::send_items(&peer_ip, pbs, app_c.clone()).await {
