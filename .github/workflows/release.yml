@@ -48,3 +48,5 @@ jobs:
           releaseBody: 'Yeni sürüm yayınlandı! Mevcut uygulamanız otomatik güncellenecektir.'
           releaseDraft: false
           prerelease: false
+          includeUpdater: true
+          includeRelease: true
