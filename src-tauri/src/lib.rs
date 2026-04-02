@@ -45,8 +45,9 @@ async fn open_file_dialog(app: AppHandle, peer_ip: String) -> Result<(), String>
         if let Some(paths) = file_paths {
             let pbs: Vec<std::path::PathBuf> = paths.into_iter().filter_map(|p| p.into_path().ok()).collect();
             let app_c = app.clone();
+            let peer_ip_c = peer_ip.clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = transfer::send_items(&peer_ip, pbs, app_c.clone()).await {
+                if let Err(e) = transfer::send_items(&peer_ip_c, pbs, app_c.clone()).await {
                     let _ = app_c.emit("transfer-event", format!("Hata: {}", e));
                 }
             });

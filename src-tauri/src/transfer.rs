@@ -134,7 +134,9 @@ async fn handle_connection(mut socket: TcpStream, app: AppHandle) -> Result<(), 
 }
 
 pub async fn send_items(peer_ip: &str, paths: Vec<PathBuf>, app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    println!("{} adresine bağlanılıyor...", peer_ip);
     let mut socket = TcpStream::connect(format!("{}:{}", peer_ip, TRANSFER_PORT)).await?;
+    println!("Bağlantı başarılı. Dosya listesi hazırlanıyor...");
 
     let mut all_files = Vec::new();
     let mut total_size = 0u64;
