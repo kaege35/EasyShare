@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EasyShare</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="main.js" defer></script>
 </head>
@@ -20,7 +21,7 @@
       <label class="login-label">Kullanıcı Adı</label>
       <input class="login-input" id="name-input" type="text" placeholder="Adınızı giriniz" maxlength="24" autofocus>
       <button class="login-btn" id="join-btn">Oturum Aç</button>
-      <div class="login-version">v1.2.2</div>
+      <div class="login-version">v2.0.0</div>
     </div>
   </div>
 
@@ -29,7 +30,8 @@
       <div class="header-logo" data-tauri-drag-region>Easy<span>Share</span></div>
       <div class="header-meta">
         <div class="status-dot">
-          <div class="dot"></div><span>YEREL AĞ BAĞLI</span>
+          <div class="dot"></div>
+          <span id="wifi-name">YEREL AĞ BAĞLI</span>
         </div>
         <div class="my-name" id="header-name"></div>
       </div>
@@ -39,7 +41,14 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <span>Ağdaki Cihazlar</span>
-          <span class="online-count" id="online-count">0</span>
+          <div class="sidebar-actions">
+            <button class="refresh-btn" id="refresh-btn" title="Ağı Tara">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+              </svg>
+            </button>
+            <span class="online-count" id="online-count">0</span>
+          </div>
         </div>
         <div class="user-list" id="user-list"></div>
       </aside>
@@ -47,22 +56,52 @@
       <div class="content">
         <div class="drop-area" id="drop-area">
           <div id="no-target" class="no-target-msg">
-            <p>Hedef Cihaz Seçiniz</p>
+            <div class="no-target-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <p class="no-target-title">Hedef Cihaz Seçiniz</p>
             <span class="sub-text">Aktarım yapmak için sol menüden bir bağlantı noktası belirleyin.</span>
           </div>
 
           <div id="drop-target-ui" style="display:none; flex-direction:column; align-items:center; width:100%;">
             <div class="drop-frame" id="drop-frame">
-              <div class="drop-icon">📁</div>
+              <div class="drop-icon-container">
+                <svg class="drop-svg-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
               <div class="drop-target-name" id="drop-target-name"></div>
-              <div class="drop-hint">Aktarılacak dosyaları veya klasörleri bu alana sürükleyiniz</div>
-              <button class="browse-btn" id="browse-btn">Gözat</button>
+              <div class="drop-hint">Dosya veya klasörleri bu alana sürükleyin</div>
+              <div class="drop-divider">
+                <span>veya</span>
+              </div>
+              <button class="browse-btn" id="browse-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                Dosya Seç
+              </button>
             </div>
           </div>
         </div>
 
         <div class="transfer-log">
-          <div class="log-header">İşlem Geçmişi</div>
+          <div class="log-header">
+            <div class="log-header-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              <span>İşlem Geçmişi</span>
+            </div>
+            <span class="log-count" id="log-count">0</span>
+          </div>
           <div id="log-list"></div>
         </div>
       </div>

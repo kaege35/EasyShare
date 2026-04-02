@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_notification::NotificationExt;
 use walkdir::WalkDir;
 
 pub const TRANSFER_PORT: u16 = 53318;
@@ -124,6 +125,13 @@ async fn handle_connection(mut socket: TcpStream, app: AppHandle) -> Result<(), 
                         }));
                     }
                 }
+
+                // Native bildirim gönder (macOS + Windows)
+                let _ = app.notification()
+                    .builder()
+                    .title("EasyShare")
+                    .body(format!("İndirme tamamlandı: {}", rel_path))
+                    .show();
             },
             TransferProtocol::AllDone => {
                 break;

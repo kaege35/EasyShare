@@ -24,7 +24,34 @@ pub struct DiscoveryState {
     pub peers: std::collections::HashMap<String, (PeerInfo, std::time::Instant)>,
 }
 
+// Global self ID — frontend'e dönebilmek için
+lazy_static::lazy_static! {
+    static ref SELF_ID: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    static ref FORCE_ANNOUNCE: Arc<tokio::sync::Notify> = Arc::new(tokio::sync::Notify::new());
+    static ref DISCOVERY_RUNNING: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+}
+
+pub async fn set_self_id(id: String) {
+    *SELF_ID.lock().await = Some(id);
+}
+
+pub async fn force_announce() {
+    FORCE_ANNOUNCE.notify_one();
+}
+
 pub async fn start_discovery_loop(app: AppHandle, id: String, name: String, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+    // Zaten çalışıyorsa tekrar başlatma
+    {
+        let mut running = DISCOVERY_RUNNING.lock().await;
+        if *running {
+            println!("Discovery zaten çalışıyor, yeniden başlatılmıyor.");
+            // Sadece force announce yap
+            FORCE_ANNOUNCE.notify_one();
+            return Ok(());
+        }
+        *running = true;
+    }
+
     let state = Arc::new(Mutex::new(DiscoveryState {
         id: id.clone(),
         name: name.clone(),
@@ -34,10 +61,8 @@ pub async fn start_discovery_loop(app: AppHandle, id: String, name: String, port
 
     let addr = SocketAddr::from(([0, 0, 0, 0], DISCOVERY_PORT));
     
-    // soketi tokio ile bağlayıp yapılandırıyoruz
     let socket = UdpSocket::bind(addr).await?;
     
-    // Multi-cast grubuna katılıyoruz, böylece ağdaki diğer cihazları duyabiliriz
     if let Err(e) = socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::new(0, 0, 0, 0)) {
         println!("Multicast join error (ignoring if loopback): {:?}", e);
     }
@@ -63,13 +88,12 @@ pub async fn start_discovery_loop(app: AppHandle, id: String, name: String, port
                 }
             };
             
-            // Kendi bilgimizi multicast ile ağa ilan edelim
             if let Ok(json) = serde_json::to_string(&info) {
                 let dest = SocketAddr::from((MULTICAST_ADDR, DISCOVERY_PORT));
                 let _ = send_socket.send_to(json.as_bytes(), dest).await;
             }
             
-            // Süresi dolmuş (offline) cihazları listeden temizleyip arayüze güncel listeyi yollayalım
+            // Süresi dolmuş (offline) cihazları temizle ve güncelle
             {
                 let mut s = state_clone.lock().await;
                 s.peers.retain(|_, (_, last_seen)| last_seen.elapsed() < Duration::from_secs(10));
@@ -79,19 +103,41 @@ pub async fn start_discovery_loop(app: AppHandle, id: String, name: String, port
                     peer_list.push(info.clone());
                 }
                 
-                // Kendimizi de listeye ekliyoruz
+                // Kendimizi de listeye ekle
                 peer_list.push(PeerInfo {
                     id: s.id.clone(),
                     name: s.name.clone(),
                     port: s.port,
-                    ip: None, // kendi ip'mize ihtiyacımız yok
+                    ip: None,
                 });
                 
                 let _ = app_clone.emit("peers-updated", peer_list);
             }
             
-            // 3 saniyede bir yayın yapacağız
-            tokio::time::sleep(Duration::from_secs(3)).await;
+            // 3 saniye ya da force announce bekle
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_secs(3)) => {},
+                _ = FORCE_ANNOUNCE.notified() => {
+                    println!("Force network scan tetiklendi.");
+                    // Ek olarak hızlı 3x announce gönder
+                    for _ in 0..3 {
+                        let info = {
+                            let s = state_clone.lock().await;
+                            PeerInfo {
+                                id: s.id.clone(),
+                                name: s.name.clone(),
+                                port: s.port,
+                                ip: None,
+                            }
+                        };
+                        if let Ok(json) = serde_json::to_string(&info) {
+                            let dest = SocketAddr::from((MULTICAST_ADDR, DISCOVERY_PORT));
+                            let _ = send_socket.send_to(json.as_bytes(), dest).await;
+                        }
+                        tokio::time::sleep(Duration::from_millis(300)).await;
+                    }
+                }
+            }
         }
     });
     
@@ -105,7 +151,7 @@ pub async fn start_discovery_loop(app: AppHandle, id: String, name: String, port
                         peer.ip = Some(addr.ip().to_string());
                         let mut s = state.lock().await;
                         
-                        // Kendi gönderdiğimiz paketleri yok sayalım
+                        // Kendi gönderdiğimiz paketleri yok say
                         if peer.id != s.id {
                             s.peers.insert(peer.id.clone(), (peer, std::time::Instant::now()));
                         }

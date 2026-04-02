@@ -1,12 +1,13 @@
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
-const { isPermissionGranted, requestPermission, sendNotification } = window.__TAURI__.notification;
 
 // ─── STATE ───────────────────────────────────────────────
 let myName = '';
+let myId = null;
 let selectedUser = null;
 let pendingTransfer = null; 
 let logItems = {};
+let logCount = 0;
 
 // ─── INIT ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -19,19 +20,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const dropArea = document.getElementById('drop-area');
   
-  // Sadece CSS animasyonlari icin native window
+  // Tauri v2 drag-drop events (doğru event isimleri)
   listen('tauri://drag-enter', () => { if (selectedUser) dropArea.classList.add('dragging'); });
+  listen('tauri://drag-over', () => { if (selectedUser) dropArea.classList.add('dragging'); });
   listen('tauri://drag-leave', () => dropArea.classList.remove('dragging'));
 
-  listen('tauri://drop', async (e) => {
+  // Sürükle-bırak: tauri://drag-drop (v2'de tauri://drop değil!)
+  listen('tauri://drag-drop', async (e) => {
     dropArea.classList.remove('dragging');
     if (!selectedUser) { toast('Önce bir kişi seç', 'error'); return; }
     if (!selectedUser.ip) { toast('Ağ adresi yok', 'error'); return; }
     
-    const paths = e.payload.paths; // Tauri native full path array
+    const paths = e.payload.paths;
     if (!paths || paths.length === 0) return;
     
-    // Rust arka ucuna direkt gönder
     invoke('send_paths_directly', { peerIp: selectedUser.ip, paths });
   });
 
@@ -41,30 +43,36 @@ document.addEventListener("DOMContentLoaded", () => {
     invoke('open_file_dialog', { peerIp: selectedUser.ip });
   });
 
-  // Gelen onay istekleri için dinleyici
+  // Yenile butonu
+  document.getElementById('refresh-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('refresh-btn');
+    btn.classList.add('spinning');
+    try {
+      await invoke('scan_network');
+      toast('Ağ taranıyor...', 'info');
+    } catch(e) {
+      toast('Tarama hatası: ' + e, 'error');
+    }
+    setTimeout(() => btn.classList.remove('spinning'), 1500);
+  });
+
+  // Gelen onay istekleri
   listen('transfer-request', (event) => {
     const p = event.payload;
     showModal(p.id, p.total_files, p.total_size);
-    notifyOS('EasyShare: Gelen İstek', `${p.total_files} adet dosya gönderilmek isteniyor.`);
   });
 
-  // Genel hata ve durum bildirimleri (Örn: Reddetme)
+  // Genel hata ve durum bildirimleri
   listen('transfer-event', (event) => {
     const msg = event.payload;
     if (msg.includes("ERİŞİM_REDDEDİLDİ")) {
-      // En son out log'unu bul ve "Reddedildi" olarak işaretle
-      for (let peerId in logItems) {
-        if (logItems[peerId].startsWith('log-out-')) { // Bu mantık geliştirilebilir ama şimdilik yeterli
-           updateLog(peerId, 'Reddedildi', 'error', 0);
-        }
-      }
       toast('Karşı taraf aktarımı reddetti', 'error');
     } else {
       toast(msg, 'error');
     }
   });
 
-  // Anlık Yüzde Barları için progress dinleyici
+  // Gelen dosya ilerleme
   listen('transfer-progress', (event) => {
     const { id, pct, text, is_done } = event.payload;
     if (pct === 0 && text) {
@@ -72,12 +80,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (is_done) {
       updateLog(id, 'Tamamlandı', 'done', 100);
       toast(text || 'Transfer bitti!', 'success');
-      notifyOS('EasyShare İndirmesi', text || 'Dosyalar başarıyla indirildi.');
     } else {
       updateLog(id, `%${pct}`, '', pct);
     }
   });
 
+  // Giden dosya ilerleme
   listen('transfer-out-progress', (event) => {
     const { id, pct, text, is_done } = event.payload;
     if (pct === 0 && text) {
@@ -90,29 +98,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Ağ cihazları güncelleme listener'ı
+  // Ağ cihazları güncelleme
   listen('peers-updated', (event) => {
     updateUserList(event.payload);
   });
 
-  // Otomatik güncelleme bildirimi
+  // Otomatik güncelleme
   listen('update-available', (event) => {
     const version = event.payload;
     showUpdateBanner(version);
   });
+
+  // Accept/Decline butonları
+  const acceptBtn = document.getElementById('accept-btn');
+  if(acceptBtn) acceptBtn.addEventListener('click', () => {
+    document.getElementById('incoming-modal').classList.remove('visible');
+    if (currentTransferId) invoke('respond_to_transfer', { id: currentTransferId, accept: true });
+  });
+
+  const declineBtn = document.getElementById('decline-btn');
+  if(declineBtn) declineBtn.addEventListener('click', () => {
+    document.getElementById('incoming-modal').classList.remove('visible');
+    if (currentTransferId) invoke('respond_to_transfer', { id: currentTransferId, accept: false });
+  });
 });
 
-async function notifyOS(title, body) {
-  let permissionGranted = await isPermissionGranted();
-  if (!permissionGranted) {
-    const permission = await requestPermission();
-    permissionGranted = permission === 'granted';
-  }
-  if (permissionGranted) sendNotification({ title, body });
-}
-
 function showUpdateBanner(version) {
-  // Varsa önce eski banner'ı kaldır
   const existing = document.getElementById('update-banner');
   if (existing) existing.remove();
 
@@ -142,20 +153,6 @@ function showModal(transferId, count, size) {
   overlay.classList.add('visible');
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const acceptBtn = document.getElementById('accept-btn');
-  if(acceptBtn) acceptBtn.addEventListener('click', () => {
-    document.getElementById('incoming-modal').classList.remove('visible');
-    if (currentTransferId) invoke('respond_to_transfer', { id: currentTransferId, accept: true });
-  });
-
-  const declineBtn = document.getElementById('decline-btn');
-  if(declineBtn) declineBtn.addEventListener('click', () => {
-    document.getElementById('incoming-modal').classList.remove('visible');
-    if (currentTransferId) invoke('respond_to_transfer', { id: currentTransferId, accept: false });
-  });
-});
-
 // ─── LOGIN ────────────────────────────────────────────────
 async function joinNetwork() {
   const name = document.getElementById('name-input').value.trim();
@@ -163,14 +160,30 @@ async function joinNetwork() {
   myName = name;
   
   try {
-    // Rust arka ucuna isim gönderip mDNS/Multicast başlatılacak
-    await invoke('start_discovery', { name });
+    // start_discovery artık self ID döndürüyor
+    myId = await invoke('start_discovery', { name });
     
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
     document.getElementById('header-name').textContent = myName;
+
+    // WiFi SSID'yi al
+    fetchWifiSSID();
   } catch(e) {
     toast('Ağa katılma hatası: ' + e, 'error');
+  }
+}
+
+async function fetchWifiSSID() {
+  try {
+    const ssid = await invoke('get_wifi_ssid');
+    const el = document.getElementById('wifi-name');
+    if (ssid && el) {
+      el.textContent = ssid;
+    }
+  } catch(e) {
+    console.log('WiFi SSID alınamadı:', e);
+    // Varsayılan metin kalır
   }
 }
 
@@ -179,13 +192,13 @@ function updateUserList(users) {
   const list = document.getElementById('user-list');
   const count = document.getElementById('online-count');
   
-  // kendimiz hariç
-  const otherUsers = users.filter(u => u.name !== myName);
+  // ID bazlı filtreleme (isim yerine)
+  const otherUsers = users.filter(u => u.id !== myId);
   count.textContent = otherUsers.length;
   list.innerHTML = '';
   
   users.forEach(u => {
-    const isSelf = u.name === myName;
+    const isSelf = u.id === myId;
     const isSelected = selectedUser && selectedUser.id === u.id;
     const el = document.createElement('div');
     el.className = `user-item${isSelf ? ' self' : ''}${isSelected ? ' selected' : ''}`;
@@ -205,16 +218,18 @@ function updateUserList(users) {
     list.appendChild(el);
   });
 
+  // Seçili kullanıcı ağdan ayrıldıysa
   if (selectedUser && !users.find(u => u.id === selectedUser.id)) {
+    const oldName = selectedUser.name;
     selectedUser = null;
     showDropUI(false);
-    toast(`${selectedUser?.name || 'Kişi'} ağdan ayrıldı`, 'error');
+    toast(`${oldName} ağdan ayrıldı`, 'error');
   }
 }
 
 function selectUser(user) {
   selectedUser = user;
-  document.getElementById('drop-target-name').textContent = user.name + ' →';
+  document.getElementById('drop-target-name').textContent = user.name + ' cihazına gönder';
   showDropUI(true);
   document.querySelectorAll('.user-item').forEach(el => el.classList.remove('selected'));
   document.querySelectorAll('.user-item').forEach(el => {
@@ -225,7 +240,7 @@ function selectUser(user) {
 }
 
 function showDropUI(show) {
-  document.getElementById('no-target').style.display = show ? 'none' : 'block';
+  document.getElementById('no-target').style.display = show ? 'none' : 'flex';
   document.getElementById('drop-target-ui').style.display = show ? 'flex' : 'none';
 }
 
@@ -234,12 +249,20 @@ function addLog(peerId, fileName, direction, statusText) {
   const list = document.getElementById('log-list');
   const id = `log-${peerId}-${Date.now()}`;
   logItems[peerId] = id;
-  const icon = direction === 'out' ? '⬆' : '⬇';
+  logCount++;
+  document.getElementById('log-count').textContent = logCount;
+
+  const dirIcon = direction === 'out' 
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 11 12 6 7 11"/><line x1="12" y1="18" x2="12" y2="6"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 13 12 18 17 13"/><line x1="12" y1="6" x2="12" y2="18"/></svg>';
+  
+  const dirClass = direction === 'out' ? 'log-dir-out' : 'log-dir-in';
+
   const el = document.createElement('div');
   el.className = 'log-item';
   el.id = id;
   el.innerHTML = `
-    <div class="log-icon">${icon}</div>
+    <div class="log-icon ${dirClass}">${dirIcon}</div>
     <div class="log-text"><strong>${fileName}</strong></div>
     <div class="log-progress"><div class="log-progress-fill" style="width:0%"></div></div>
     <div class="log-status">${statusText}</div>
@@ -276,5 +299,6 @@ function toast(msg, type = 'info') {
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
