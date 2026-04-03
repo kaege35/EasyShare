@@ -8,6 +8,8 @@ let selectedUser = null;
 let logItems = {};
 let logCount = 0;
 let activeTransferId = null;
+let lastUsers = [];
+let searchQuery = '';
 
 // ─── INIT ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -64,6 +66,11 @@ document.addEventListener("DOMContentLoaded", () => {
       toast('Tarama hatası: ' + e, 'error');
     }
     setTimeout(() => btn.classList.remove('spinning'), 1500);
+  });
+
+  document.getElementById('user-search').addEventListener('input', (e) => {
+    searchQuery = e.target.value.toLowerCase();
+    renderUserList();
   });
 
   document.getElementById('log-clear-btn').addEventListener('click', () => {
@@ -235,14 +242,24 @@ async function fetchWifiSSID() {
 
 // ─── KULLANICI LİSTESİ ───────────────────────────────────
 function updateUserList(users) {
+  lastUsers = users;
+  renderUserList();
+}
+
+function renderUserList() {
+  const users = lastUsers;
   const list = document.getElementById('user-list');
   const count = document.getElementById('online-count');
   
   const otherUsers = users.filter(u => u.id !== myId);
   count.textContent = otherUsers.length;
   list.innerHTML = '';
+
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchQuery)
+  );
   
-  users.forEach(u => {
+  filteredUsers.forEach(u => {
     const isSelf = u.id === myId;
     const isSelected = selectedUser && selectedUser.id === u.id;
     const el = document.createElement('div');
