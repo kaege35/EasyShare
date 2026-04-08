@@ -4975,7 +4975,7 @@ dependencies = [
 
 [[package]]
 name = "verishare"
-version = "4.2.3"
+version = "4.2.4"
 dependencies = [
  "dirs",
  "lazy_static",
